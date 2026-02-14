@@ -175,10 +175,29 @@ print("✓ All checks passed")
 
 ---
 
+## Temporal Forecasting with UQ
+
+**UQ_Forecaster:** Predicts next sensor values with uncertainty.
+
+```python
+forecaster = UQ_Forecaster(input_size=num_sensors, noise_dim=50)
+fit_uq(forecaster, train_forecast_dataset, valid_forecast_dataset)
+
+# Forecast trajectories
+mean_traj, std_traj = forecaster.forecast(x, horizon=100, n_samples=100)
+
+# Full pipeline: sensors → future spatial fields
+sensor_traj, recon_mean, recon_std = forecast_uq(forecaster, reconstructor, test_dataset)
+```
+
+**Key:** Each sample = one possible future. Ensemble gives uncertainty that grows with horizon.
+
+---
+
 ## TODO
 
 - [ ] Run on SST data and compare to SHRED baseline
 - [ ] Generate paper figures (calibration, reconstruction + UQ)
 - [ ] Ablation: noise_dim sensitivity
 - [ ] Ablation: energy loss vs MSE
-- [ ] Forward prediction with UQ (future work)
+- [ ] Test temporal forecasting with UQ
