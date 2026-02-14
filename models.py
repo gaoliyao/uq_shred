@@ -250,7 +250,12 @@ class UQ_Forecaster(torch.nn.Module):
         with torch.no_grad():
             samples = torch.stack([self.forward(x) for _ in range(n_samples)])
         return samples
-    
+
+    def predict(self, x, n_samples=100):
+        '''Predict next sensor values with uncertainty (mean and std).'''
+        samples = self.sample(x, n_samples)
+        return samples.mean(dim=0), samples.std(dim=0)
+
     def sample_trajectory(self, x, horizon, n_samples=100):
         '''Generate n_samples trajectories over horizon steps.
         
@@ -366,7 +371,10 @@ def fit_uq(model, train_dataset, valid_dataset, batch_size=64, num_epochs=4000,
         if epoch % 20 == 0 or epoch == 1:
             model.eval()
             with torch.no_grad():
-                val_mean, _ = model.reconstruct(valid_dataset.X, n_samples=20)
+                if isinstance(model, UQ_Forecaster):
+                    val_mean, _ = model.predict(valid_dataset.X, n_samples=20)
+                else:
+                    val_mean, _ = model.reconstruct(valid_dataset.X, n_samples=20)
                 val_error = torch.linalg.norm(val_mean - valid_dataset.Y)
                 val_error = val_error / torch.linalg.norm(valid_dataset.Y)
                 val_error_list.append(val_error)
