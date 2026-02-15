@@ -1,4 +1,4 @@
-import torch
+processdata.pyimport torch
 from scipy.io import loadmat
 import numpy as np
 import scipy.linalg
@@ -34,6 +34,32 @@ def load_data(name):
         load_X = np.load('Data/numpy_isotropic.npy').reshape(-1, 350*350)
         return load_X
 
+    if name == 'SUN':
+        load_X = np.load('Data/sun_data_aoa_pooling_normalized.npy').reshape(-1, 271*271)
+        print(load_X.shape)
+        return load_X
+    
+    if name == 'KOL':
+        load_X = np.load('Data/original_kolflow_long_re30.npy').reshape(6000, 80*80, 2)
+        print(load_X.shape)
+        return load_X
+    
+    if name == 'PEN':
+#         load_X = np.load('/home/marsgao/pyshred/Data/numpy_isotropic.npy')
+#         print(load_X.shape)
+        load_X = np.load('Data/pendulum_smoothed.npy').reshape(-1, 27*24)
+        load_X = load_X[:389,:]
+        print(load_X.shape)
+        return load_X
+    
+    if name == 'FLOW':
+        load_X = np.load('Data/flow_over_cylinder_extended.npy').reshape(-1, 400*1000)
+        print(load_X.shape)
+        return load_X
+    
+    if name == 'AO3':
+        load_X = np.load('Data/short_svd_O3.npy')
+        return load_X
 
 def qr_place(data_matrix, num_sensors):
     '''Takes a (m x N) data matrix consisting of N samples of an m dimensional state and
