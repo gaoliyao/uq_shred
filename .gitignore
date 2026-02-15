@@ -17,3 +17,10 @@ results/
 # OS
 .DS_Store
 uq_shred/
+
+Data/
+
+notebook_alignment_summary.md
+experiments.md
+plotting.md
+uq_shred_flow_new.ipynb
