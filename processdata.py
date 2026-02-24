@@ -59,6 +59,12 @@ def load_data(name):
         print(load_X.shape)
         return load_X
     
+    if name == 'NEURO':
+        data = np.load('Data/neuro_data.npy', allow_pickle=True).item()
+        # Stack 3 brain regions (VISam, VISpm, VISp), each (5, 1000) → (1000, 15)
+        load_X = np.concatenate([data['visam'], data['vispm'], data['visp']], axis=0).T
+        return load_X
+
     if name == 'AO3':
         load_X = np.load('Data/short_svd_O3.npy')
         return load_X
