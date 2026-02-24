@@ -143,6 +143,12 @@ samples_orig   = np.array([sc.inverse_transform(s) for s in samples_np])
 median_orig    = np.median(samples_orig, axis=0)
 std_orig       = samples_orig.std(axis=0)
 
+sort_order        = np.argsort(test_indices)
+test_truth_sorted = test_truth_np[sort_order]
+samples_sorted    = samples_orig[:, sort_order, :]
+median_sorted     = np.median(samples_sorted, axis=0)
+std_sorted        = samples_sorted.std(axis=0)
+
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # [5] METRICS
@@ -241,60 +247,71 @@ fig.savefig(results_dir / "uq_shred_error_vs_unc.png", dpi=150, bbox_inches="tig
 print(f"  Saved: {results_dir}/uq_shred_error_vs_unc.png")
 plt.close(fig)
 
-# 4. Timeseries at 4 spatial locations
+# 4. Timeseries at 10 random spatial locations (2 rows × 5 cols, time-sorted)
 q_levels = [0.025, 0.15, 0.25, 0.5, 0.75, 0.85, 0.975]
-quantiles = {q: np.percentile(samples_orig, 100 * q, axis=0) for q in q_levels}
-spatial_idx = np.linspace(0, m - 1, 6, dtype=int)[1:-1]  # 4 interior points
-T_show = min(100, len(test_truth_np))
-times = np.arange(T_show)
+quantiles_ts = {q: np.percentile(samples_sorted, 100 * q, axis=0) for q in q_levels}
+spatial_10 = np.random.RandomState(42).choice(m, 10, replace=False)
+T_show = min(100, len(test_truth_sorted))
+times_ts = np.arange(T_show)
 
-fig, axes = plt.subplots(1, len(spatial_idx), figsize=(5 * len(spatial_idx), 4), squeeze=False)
+fig, axes = plt.subplots(2, 5, figsize=(20, 6), squeeze=False)
 fig.suptitle("UQ-SHRED: Temporal Reconstruction at Selected Spatial Locations",
-             fontsize=14, fontweight="bold", y=1.02)
-for col, xi in enumerate(spatial_idx):
-    ax = axes[0, col]
-    ax.fill_between(times, quantiles[0.025][:T_show, xi], quantiles[0.975][:T_show, xi],
-                    alpha=0.15, color="C0", label="95% CI")
-    ax.fill_between(times, quantiles[0.15][:T_show, xi], quantiles[0.85][:T_show, xi],
-                    alpha=0.25, color="C0", label="70% CI")
-    ax.fill_between(times, quantiles[0.25][:T_show, xi], quantiles[0.75][:T_show, xi],
-                    alpha=0.4, color="C0", label="50% CI")
-    ax.plot(times, test_truth_np[:T_show, xi], "k-", lw=1.2, label="Truth")
-    ax.plot(times, quantiles[0.5][:T_show, xi], "C0--", lw=0.8, label="Median")
-    ax.set_title(f"Spatial idx {xi}", fontsize=10)
-    ax.set_xlabel("time step")
-    if col == 0:
-        ax.set_ylabel("SST")
-    if col == len(spatial_idx) - 1:
-        ax.legend(fontsize=7, loc="upper right")
+             fontsize=14, fontweight="bold")
+for row in range(2):
+    for col in range(5):
+        xi = spatial_10[row * 5 + col]
+        ax = axes[row, col]
+        ax.fill_between(times_ts, quantiles_ts[0.025][:T_show, xi], quantiles_ts[0.975][:T_show, xi],
+                        alpha=0.15, color="C0", label="95% CI")
+        ax.fill_between(times_ts, quantiles_ts[0.15][:T_show, xi], quantiles_ts[0.85][:T_show, xi],
+                        alpha=0.25, color="C0", label="70% CI")
+        ax.fill_between(times_ts, quantiles_ts[0.25][:T_show, xi], quantiles_ts[0.75][:T_show, xi],
+                        alpha=0.4, color="C0", label="50% CI")
+        ax.plot(times_ts, test_truth_sorted[:T_show, xi], "k-", lw=1.2, label="Truth")
+        ax.plot(times_ts, quantiles_ts[0.5][:T_show, xi], "C0--", lw=0.8, label="Median")
+        ax.set_title(f"idx {xi}", fontsize=9)
+        if row == 1:
+            ax.set_xlabel("time step")
+        if col == 0:
+            ax.set_ylabel("SST")
+        if row == 0 and col == 4:
+            ax.legend(fontsize=6, loc="upper right")
 plt.tight_layout()
 fig.savefig(results_dir / "uq_shred_timeseries.png", dpi=150, bbox_inches="tight")
 print(f"  Saved: {results_dir}/uq_shred_timeseries.png")
 plt.close(fig)
 
-# 5. Spatial snapshots (SST-specific: map to 180x360 grid)
+# 5. Spatial snapshots — 4 panels: GT | Median | |Error| | 95% CI Width
 def map_to_full_sst(data_1d):
     full = np.zeros(180 * 360)
     full[sst_locs] = data_1d
     return full.reshape(180, 360)
 
-fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+t0_snap = test_truth_sorted[0]
+m0_snap = median_sorted[0]
+e0_snap = np.abs(t0_snap - m0_snap)
+w0_snap = (np.percentile(samples_sorted, 97.5, axis=0)[0] -
+           np.percentile(samples_sorted,  2.5, axis=0)[0])
+truth_img  = map_to_full_sst(t0_snap)
+median_img = map_to_full_sst(m0_snap)
+error_img  = map_to_full_sst(e0_snap)
+width_img  = map_to_full_sst(w0_snap)
+vmin, vmax = truth_img.min(), truth_img.max()
+
+fig, axes = plt.subplots(1, 4, figsize=(20, 4))
 fig.suptitle("UQ-SHRED: Spatial Snapshot (t=0)", fontsize=14, fontweight="bold")
-truth_img  = map_to_full_sst(test_truth_np[0])
-median_img = map_to_full_sst(median_orig[0])
-std_img    = map_to_full_sst(std_orig[0])
-im0 = axes[0].imshow(truth_img, aspect="auto", cmap="coolwarm", origin="lower")
-axes[0].set_title("Ground Truth")
-axes[0].axis("off")
+im0 = axes[0].imshow(truth_img,  aspect="auto", cmap="coolwarm", vmin=vmin, vmax=vmax, origin="lower")
+axes[0].set_title("Ground Truth"); axes[0].axis("off")
 plt.colorbar(im0, ax=axes[0], fraction=0.046)
-im1 = axes[1].imshow(median_img, aspect="auto", cmap="coolwarm", origin="lower")
-axes[1].set_title("UQ-SHRED Median")
-axes[1].axis("off")
+im1 = axes[1].imshow(median_img, aspect="auto", cmap="coolwarm", vmin=vmin, vmax=vmax, origin="lower")
+axes[1].set_title("UQ-SHRED Median"); axes[1].axis("off")
 plt.colorbar(im1, ax=axes[1], fraction=0.046)
-im2 = axes[2].imshow(std_img, aspect="auto", cmap="viridis", origin="lower")
-axes[2].set_title("Uncertainty σ")
-axes[2].axis("off")
+im2 = axes[2].imshow(error_img,  aspect="auto", cmap="Reds",    origin="lower")
+axes[2].set_title("|Error|"); axes[2].axis("off")
 plt.colorbar(im2, ax=axes[2], fraction=0.046)
+im3 = axes[3].imshow(width_img,  aspect="auto", cmap="Oranges", origin="lower")
+axes[3].set_title("95% CI Width"); axes[3].axis("off")
+plt.colorbar(im3, ax=axes[3], fraction=0.046)
 plt.tight_layout()
 fig.savefig(results_dir / "uq_shred_snapshots.png", dpi=150, bbox_inches="tight")
 print(f"  Saved: {results_dir}/uq_shred_snapshots.png")
