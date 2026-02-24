@@ -65,7 +65,7 @@ config.update({"num_sensors": num_sensors, "lags": lags, "data_shape": list(load
                "sensor_locations": sensor_locations.tolist()})
 
 # Sequential 80/10/10 split
-train_indices = np.random.choice(n - lags, size=int(0.8 * (n - lags)), replace=False)
+train_indices = np.random.choice(n - lags, size=1000, replace=False)
 mask = np.ones(n - lags)
 mask[train_indices] = 0
 valid_test_indices = np.arange(0, n - lags)[np.where(mask!=0)[0]]
@@ -116,7 +116,7 @@ print("\n[3] Training UQ-SHRED …")
 uq_shred = UQ_SHRED(num_sensors, m, hidden_size=64, hidden_layers=2,
                     l1=350, l2=400, dropout=0.1, noise_dim=50).to(device)
 uq_errors = fit_uq(uq_shred, train_dataset, valid_dataset,
-                   batch_size=64, num_epochs=200, lr=1e-3, verbose=True, patience=5)
+                   batch_size=64, num_epochs=200, lr=1e-3, verbose=True, patience=50)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -124,7 +124,7 @@ uq_errors = fit_uq(uq_shred, train_dataset, valid_dataset,
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 print("\n[4] Inference (n_samples=200) …")
 uq_shred.eval()
-samples = uq_shred.sample(test_dataset.X, n_samples=200)
+samples = uq_shred.sample(test_dataset.X, n_samples=50)
 samples_np = samples.cpu().numpy()
 
 mean_recon   = samples.mean(dim=0)
