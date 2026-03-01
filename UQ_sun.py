@@ -118,7 +118,7 @@ uq_errors = fit_uq(uq_shred, train_dataset, valid_dataset,
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # [4] INFERENCE
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-print("\n[4] Inference (n_samples=50) …")
+print("\n[4] Inference (n_samples=100) …")
 uq_shred.eval()
 samples = uq_shred.sample(test_dataset.X, n_samples=100)
 samples_np = samples.cpu().numpy()
@@ -295,10 +295,10 @@ for row, t in enumerate(snap_ts):
     error_img  = e_snap.reshape(IMG_H, IMG_W)
     width_img  = w_snap.reshape(IMG_H, IMG_W)
     vmin, vmax = truth_img.min(), truth_img.max()
-    im0 = axes[row, 0].imshow(truth_img,  cmap="coolwarm", vmin=vmin, vmax=vmax)
+    im0 = axes[row, 0].imshow(truth_img,  cmap="hot", vmin=vmin, vmax=vmax)
     axes[row, 0].set_title(f"Ground Truth (t={t})", fontsize=9); axes[row, 0].axis("off")
     plt.colorbar(im0, ax=axes[row, 0], fraction=0.046)
-    im1 = axes[row, 1].imshow(median_img, cmap="coolwarm", vmin=vmin, vmax=vmax)
+    im1 = axes[row, 1].imshow(median_img, cmap="hot", vmin=vmin, vmax=vmax)
     axes[row, 1].set_title(f"UQ-SHRED Median (t={t})", fontsize=9); axes[row, 1].axis("off")
     plt.colorbar(im1, ax=axes[row, 1], fraction=0.046)
     im2 = axes[row, 2].imshow(error_img,  cmap="Reds")
