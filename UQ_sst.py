@@ -114,9 +114,9 @@ print(f"  SHRED relative error: {shred_error:.4f}")
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 print("\n[3] Training UQ-SHRED …")
 uq_shred = UQ_SHRED(num_sensors, m, hidden_size=64, hidden_layers=2,
-                    l1=350, l2=400, dropout=0.1, noise_dim=50).to(device)
+                    l1=350, l2=400, dropout=0.1, noise_dim=2500).to(device)
 uq_errors = fit_uq(uq_shred, train_dataset, valid_dataset,
-                   batch_size=64, num_epochs=200, lr=1e-3, verbose=True, patience=50)
+                   batch_size=64, num_epochs=400, lr=1e-3, verbose=True, patience=5)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -251,7 +251,7 @@ plt.close(fig)
 q_levels = [0.025, 0.15, 0.25, 0.5, 0.75, 0.85, 0.975]
 quantiles_ts = {q: np.percentile(samples_sorted, 100 * q, axis=0) for q in q_levels}
 spatial_10 = np.random.RandomState(42).choice(m, 10, replace=False)
-T_show = min(100, len(test_truth_sorted))
+T_show = min(50, len(test_truth_sorted))
 times_ts = np.arange(T_show)
 
 fig, axes = plt.subplots(2, 5, figsize=(20, 6), squeeze=False)
@@ -281,37 +281,41 @@ fig.savefig(results_dir / "uq_shred_timeseries.png", dpi=150, bbox_inches="tight
 print(f"  Saved: {results_dir}/uq_shred_timeseries.png")
 plt.close(fig)
 
-# 5. Spatial snapshots — 4 panels: GT | Median | |Error| | 95% CI Width
+# 5. Spatial snapshots — rows: time steps; cols: GT | Median | |Error| | 95% CI Width
 def map_to_full_sst(data_1d):
     full = np.zeros(180 * 360)
     full[sst_locs] = data_1d
     return full.reshape(180, 360)
 
-t0_snap = test_truth_sorted[0]
-m0_snap = median_sorted[0]
-e0_snap = np.abs(t0_snap - m0_snap)
-w0_snap = (np.percentile(samples_sorted, 97.5, axis=0)[0] -
-           np.percentile(samples_sorted,  2.5, axis=0)[0])
-truth_img  = map_to_full_sst(t0_snap)
-median_img = map_to_full_sst(m0_snap)
-error_img  = map_to_full_sst(e0_snap)
-width_img  = map_to_full_sst(w0_snap)
-vmin, vmax = truth_img.min(), truth_img.max()
+T_total = len(test_truth_sorted)
+snap_ts = [0, T_total // 3, 2 * T_total // 3, T_total - 1]
+q_lo_all = np.percentile(samples_sorted,  2.5, axis=0)   # (T, m)
+q_hi_all = np.percentile(samples_sorted, 97.5, axis=0)   # (T, m)
 
-fig, axes = plt.subplots(1, 4, figsize=(20, 4))
-fig.suptitle("UQ-SHRED: Spatial Snapshot (t=0)", fontsize=14, fontweight="bold")
-im0 = axes[0].imshow(truth_img,  aspect="auto", cmap="coolwarm", vmin=vmin, vmax=vmax, origin="lower")
-axes[0].set_title("Ground Truth"); axes[0].axis("off")
-plt.colorbar(im0, ax=axes[0], fraction=0.046)
-im1 = axes[1].imshow(median_img, aspect="auto", cmap="coolwarm", vmin=vmin, vmax=vmax, origin="lower")
-axes[1].set_title("UQ-SHRED Median"); axes[1].axis("off")
-plt.colorbar(im1, ax=axes[1], fraction=0.046)
-im2 = axes[2].imshow(error_img,  aspect="auto", cmap="Reds",    origin="lower")
-axes[2].set_title("|Error|"); axes[2].axis("off")
-plt.colorbar(im2, ax=axes[2], fraction=0.046)
-im3 = axes[3].imshow(width_img,  aspect="auto", cmap="Oranges", origin="lower")
-axes[3].set_title("95% CI Width"); axes[3].axis("off")
-plt.colorbar(im3, ax=axes[3], fraction=0.046)
+fig, axes = plt.subplots(len(snap_ts), 4, figsize=(20, 4 * len(snap_ts)))
+fig.suptitle("UQ-SHRED: Spatial Snapshots", fontsize=14, fontweight="bold")
+for row, t in enumerate(snap_ts):
+    t_snap = test_truth_sorted[t]
+    m_snap = median_sorted[t]
+    e_snap = np.abs(t_snap - m_snap)
+    w_snap = q_hi_all[t] - q_lo_all[t]
+    truth_img  = map_to_full_sst(t_snap)
+    median_img = map_to_full_sst(m_snap)
+    error_img  = map_to_full_sst(e_snap)
+    width_img  = map_to_full_sst(w_snap)
+    vmin, vmax = truth_img.min(), truth_img.max()
+    im0 = axes[row, 0].imshow(truth_img,  aspect="auto", cmap="coolwarm", vmin=vmin, vmax=vmax)
+    axes[row, 0].set_title(f"Ground Truth (t={t})", fontsize=9); axes[row, 0].axis("off")
+    plt.colorbar(im0, ax=axes[row, 0], fraction=0.046)
+    im1 = axes[row, 1].imshow(median_img, aspect="auto", cmap="coolwarm", vmin=vmin, vmax=vmax)
+    axes[row, 1].set_title(f"UQ-SHRED Median (t={t})", fontsize=9); axes[row, 1].axis("off")
+    plt.colorbar(im1, ax=axes[row, 1], fraction=0.046)
+    im2 = axes[row, 2].imshow(error_img,  aspect="auto", cmap="Reds")
+    axes[row, 2].set_title("|Error|", fontsize=9); axes[row, 2].axis("off")
+    plt.colorbar(im2, ax=axes[row, 2], fraction=0.046)
+    im3 = axes[row, 3].imshow(width_img,  aspect="auto", cmap="Oranges")
+    axes[row, 3].set_title("95% CI Width", fontsize=9); axes[row, 3].axis("off")
+    plt.colorbar(im3, ax=axes[row, 3], fraction=0.046)
 plt.tight_layout()
 fig.savefig(results_dir / "uq_shred_snapshots.png", dpi=150, bbox_inches="tight")
 print(f"  Saved: {results_dir}/uq_shred_snapshots.png")
